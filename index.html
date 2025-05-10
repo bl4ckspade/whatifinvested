@@ -15,6 +15,7 @@
     button:hover { background: #218838; }
     canvas { margin-top: 20px; border: 1px solid #ccc; }
     #results { margin-top: 20px; }
+    #nominal, #real-value, #after-tax-value { font-size: 24px; font-weight: bold; color: #28a745; }
   </style>
 </head>
 <body>
@@ -121,12 +122,12 @@
         afterTax = nominal - taxAmount;
       }
 
-      // Display results
-      document.getElementById('nominal').textContent = `€${nominal.toFixed(2)}`;
+      // Display results with proper formatting
+      document.getElementById('nominal').textContent = `${nominal.toLocaleString('en-US', { style: 'currency', currency: 'EUR' })}`;
       document.getElementById('real').style.display = inflation ? 'block' : 'none';
-      document.getElementById('real-value').textContent = `€${real.toFixed(2)}`;
+      document.getElementById('real-value').textContent = `${real.toLocaleString('en-US', { style: 'currency', currency: 'EUR' })}`;
       document.getElementById('after-tax').style.display = tax ? 'block' : 'none';
-      document.getElementById('after-tax-value').textContent = `€${afterTax.toFixed(2)}`;
+      document.getElementById('after-tax-value').textContent = `${afterTax.toLocaleString('en-US', { style: 'currency', currency: 'EUR' })}`;
 
       // Draw chart
       drawChart(nominal, years, isRecurring, amount, returnRate, frequency);
