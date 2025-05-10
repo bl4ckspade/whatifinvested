@@ -1,169 +1,196 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>What If I Invested?</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 0 10px; }
-    h1 { text-align: center; }
-    form { display: grid; gap: 10px; }
-    label { display: block; margin-bottom: 5px; }
-    input[type="number"], select { width: 100px; }
-    input[type="range"] { width: 200px; }
-    button { padding: 10px; background: #28a745; color: white; border: none; cursor: pointer; }
-    button:hover { background: #218838; }
-    canvas { margin-top: 20px; border: 1px solid #ccc; }
-    #results { margin-top: 20px; }
-    #nominal, #real-value, #after-tax-value { font-size: 24px; font-weight: bold; color: #28a745; }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Opportunity Cost Rechner</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
-  <h1>What If I Invested?</h1>
-  <form>
-    <label>Amount (€): <input type="number" id="amount" value="30" min="0" step="0.01"></label>
-    <label>
-      <input type="checkbox" id="recurring" onclick="toggleRecurring()"> Recurring
-      <select id="frequency" disabled>
-        <option value="365">Daily</option>
-        <option value="52">Weekly</option>
-        <option value="12" selected>Monthly</option>
-      </select>
-    </label>
-    <label>Years: <input type="range" id="years" min="5" max="50" value="40" oninput="updateYears()"></label>
-    <span id="years-value">40</span>
-    <label>Annual Return (%): <input type="number" id="return" value="8" min="0" step="0.1"></label>
-    <label>
-      <input type="checkbox" id="inflation" onclick="toggleInflation()"> Adjust for Inflation
-      <input type="number" id="inflation-rate" value="2" min="0" step="0.1" disabled>
-    </label>
-    <label>
-      <input type="checkbox" id="tax" onclick="toggleTax()"> Adjust for Tax
-      <input type="number" id="tax-rate" value="25" min="0" step="0.1" disabled>
-    </label>
-    <button type="button" onclick="calculate()">Calculate</button>
-  </form>
-  <div id="results">
-    <h2>If you had invested instead of consumed, you WOULD now have...</h2>
-    <p>Nominal Value: <span id="nominal">-</span></p>
-    <p id="real" style="display:none">Real Value: <span id="real-value">-</span></p>
-    <p id="after-tax" style="display:none">After-Tax Value: <span id="after-tax-value">-</span></p>
+<body class="bg-gray-100 text-gray-800">
+  <div class="max-w-2xl mx-auto p-6 bg-white shadow-md mt-8 rounded-lg">
+    <h1 class="text-2xl font-bold mb-2">Opportunity Cost Rechner</h1>
+    <p class="text-gray-700 mb-6">
+      Dieses Tool zeigt, wie viel Vermögen Sie sich entgehen lassen, wenn Sie einen bestimmten Betrag heute ausgeben statt ihn in einen breit gestreuten ETF zu investieren. Lernen Sie, wie sich auch kleine regelmäßige Ausgaben über Zeit dank Zinseszins summieren und welchen Unterschied Inflations- und Steuer­effekte machen können.
+    </p>
+    <form id="ocForm" class="space-y-4">
+      <div class="flex items-center space-x-4">
+        <label class="inline-flex items-center">
+          <input type="radio" name="mode" value="lump" id="modeLump" checked class="form-radio" />
+          <span class="ml-2">Einmalig</span>
+        </label>
+        <label class="inline-flex items-center">
+          <input type="radio" name="mode" value="annuity" id="modeAnnuity" class="form-radio" />
+          <span class="ml-2">Regelmäßig</span>
+        </label>
+      </div>
+      <div>
+        <label for="amount" class="block">Betrag (€):</label>
+        <input type="number" id="amount" class="mt-1 w-full border rounded px-2 py-1" step="0.01" value="30" min="0" required />
+      </div>
+      <div id="frequencyDiv" class="hidden">
+        <label for="frequency" class="block">Frequenz:</label>
+        <select id="frequency" class="mt-1 w-full border rounded px-2 py-1">
+          <option value="365">Täglich</option>
+          <option value="52">Wöchentlich</option>
+          <option value="12" selected>Monatlich</option>
+          <option value="1">Jährlich</option>
+        </select>
+      </div>
+      <div>
+        <label for="years" class="block">Anlagehorizont (Jahre): <span id="yearsValue" class="font-semibold">25</span></label>
+        <input type="range" id="years" class="w-full" min="10" max="40" step="1" value="25" />
+      </div>
+      <div>
+        <label for="rate" class="block">Erwartete jährliche Rendite (%):</label>
+        <input type="number" id="rate" class="mt-1 w-full border rounded px-2 py-1" value="8" step="0.1" min="0" max="15" required />
+      </div>
+      <div class="flex space-x-4">
+        <label class="inline-flex items-center">
+          <input type="checkbox" id="enableTax" class="form-checkbox" />
+          <span class="ml-2">Steuern berücksichtigen</span>
+        </label>
+        <label class="inline-flex items-center">
+          <input type="checkbox" id="enableInflation" class="form-checkbox" />
+          <span class="ml-2">Inflation berücksichtigen</span>
+        </label>
+      </div>
+      <div id="taxDiv" class="hidden">
+        <label for="taxRate" class="block">Steuersatz (% auf Rendite):</label>
+        <input type="number" id="taxRate" class="mt-1 w-full border rounded px-2 py-1" value="25" step="0.1" min="0" max="100" />
+      </div>
+      <div id="inflationDiv" class="hidden">
+        <label for="inflation" class="block">Inflationsrate (%):</label>
+        <input type="number" id="inflation" class="mt-1 w-full border rounded px-2 py-1" value="2" step="0.1" min="0" max="100" />
+      </div>
+      <button type="button" id="calculate" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Berechnen</button>
+    </form>
+
+    <div id="resultArea" class="mt-6 space-y-4 hidden">
+      <div id="resultSummary" class="bg-blue-50 border-l-4 border-blue-600 p-4 rounded text-blue-900 mb-4 text-lg font-semibold"></div>
+      <canvas id="chart" height="200"></canvas>
+    </div>
   </div>
-  <canvas id="chart" width="300" height="150"></canvas>
 
   <script>
-    // Future value of a single payment
-    function fv(pv, rate, years) {
-      return pv * (1 + rate) ** years;
+    // Helfer-Funktionen
+    function futureValueLumpSum(P, r, n) {
+      return P * Math.pow(1 + r, n);
+    }
+    function futureValueAnnuity(C, r, n, freq) {
+      const r_per = r / freq;
+      const n_per = n * freq;
+      return C * ((Math.pow(1 + r_per, n_per) - 1) / r_per);
+    }
+    function realRate(r, inf) {
+      return (1 + r) / (1 + inf) - 1;
+    }
+    function formatCurrency(value) {
+      return value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
     }
 
-    // Future value of recurring payments
-    function fvSeries(pmt, rate, years, freq) {
-      const r = rate / freq;
-      const n = years * freq;
-      return pmt * ((1 + r) ** n - 1) / r;
-    }
+    // DOM-Elemente
+    const modeLump = document.getElementById('modeLump');
+    const modeAnnuity = document.getElementById('modeAnnuity');
+    const frequencyDiv = document.getElementById('frequencyDiv');
+    const enableTax = document.getElementById('enableTax');
+    const enableInflation = document.getElementById('enableInflation');
+    const taxDiv = document.getElementById('taxDiv');
+    const inflationDiv = document.getElementById('inflationDiv');
+    const calculateBtn = document.getElementById('calculate');
+    const resultArea = document.getElementById('resultArea');
+    const resultSummary = document.getElementById('resultSummary');
+    const yearsInput = document.getElementById('years');
+    const yearsValue = document.getElementById('yearsValue');
+    const ctx = document.getElementById('chart').getContext('2d');
+    let chart;
 
-    // Toggle recurring frequency dropdown
-    function toggleRecurring() {
-      const recurring = document.getElementById('recurring').checked;
-      document.getElementById('frequency').disabled = !recurring;
+    // Show/hide Inputs
+    function toggleMode() {
+      frequencyDiv.classList.toggle('hidden', modeLump.checked);
     }
-
-    // Toggle inflation input
-    function toggleInflation() {
-      const inflation = document.getElementById('inflation').checked;
-      document.getElementById('inflation-rate').disabled = !inflation;
-    }
-
-    // Toggle tax input
     function toggleTax() {
-      const tax = document.getElementById('tax').checked;
-      document.getElementById('tax-rate').disabled = !tax;
+      taxDiv.classList.toggle('hidden', !enableTax.checked);
     }
-
-    // Update years display
-    function updateYears() {
-      const years = document.getElementById('years').value;
-      document.getElementById('years-value').textContent = years;
+    function toggleInflation() {
+      inflationDiv.classList.toggle('hidden', !enableInflation.checked);
     }
+    modeLump.addEventListener('change', toggleMode);
+    modeAnnuity.addEventListener('change', toggleMode);
+    enableTax.addEventListener('change', toggleTax);
+    enableInflation.addEventListener('change', toggleInflation);
 
-    // Calculate and display results
-    function calculate() {
-      const amount = parseFloat(document.getElementById('amount').value) || 0;
-      const years = parseInt(document.getElementById('years').value) || 40;
-      const returnRate = parseFloat(document.getElementById('return').value) / 100 || 0.08;
-      const isRecurring = document.getElementById('recurring').checked;
-      const frequency = parseInt(document.getElementById('frequency').value) || 12;
-      const inflation = document.getElementById('inflation').checked;
-      const inflationRate = parseFloat(document.getElementById('inflation-rate').value) / 100 || 0.02;
-      const tax = document.getElementById('tax').checked;
-      const taxRate = parseFloat(document.getElementById('tax-rate').value) / 100 || 0.25;
+    // Slider-Update
+    yearsInput.addEventListener('input', () => {
+      yearsValue.textContent = yearsInput.value;
+    });
 
-      // Calculate nominal value
-      let nominal;
-      if (isRecurring) {
-        nominal = fvSeries(amount, returnRate, years, frequency);
-      } else {
-        nominal = fv(amount, returnRate, years);
+    // Berechnung und Chart-Update
+    calculateBtn.addEventListener('click', () => {
+      const P = parseFloat(document.getElementById('amount').value);
+      const years = parseInt(yearsInput.value);
+      let r = parseFloat(document.getElementById('rate').value) / 100;
+      const freq = modeAnnuity.checked ? parseInt(document.getElementById('frequency').value) : 1;
+
+      if (enableTax.checked) {
+        const taxRate = parseFloat(document.getElementById('taxRate').value) / 100;
+        r = r * (1 - taxRate);
+      }
+      let useReal = false;
+      if (enableInflation.checked) {
+        const infRate = parseFloat(document.getElementById('inflation').value) / 100;
+        r = realRate(r, infRate);
+        useReal = true;
       }
 
-      // Adjust for inflation (real value)
-      let real = nominal;
-      if (inflation) {
-        const inflationFV = fv(1, inflationRate, years);
-        real = nominal / inflationFV;
+      const labels = [];
+      const data = [];
+      for (let i = 0; i <= years; i++) {
+        labels.push(i);
+        let val;
+        if (modeLump.checked) {
+          val = futureValueLumpSum(P, r, i);
+        } else {
+          val = futureValueAnnuity(P, r, i, freq);
+        }
+        data.push(val);
       }
+      const finalValue = data[data.length - 1];
 
-      // Adjust for tax (simplified: tax on final value)
-      let afterTax = nominal;
-      if (tax) {
-        const taxAmount = nominal * taxRate;
-        afterTax = nominal - taxAmount;
-      }
+      // Ergebnis anzeigen mit deutscher Formatierung
+      const startFormatted = formatCurrency(P);
+      const endFormatted = formatCurrency(finalValue);
+      const suffix = useReal ? ' (real)' : '';
+      resultSummary.innerHTML = `Heutiger Betrag: ${startFormatted} – In ${years}&nbsp;Jahren: ${endFormatted}${suffix}.`;
+      resultArea.classList.remove('hidden');
 
-      // Display results with proper formatting
-      document.getElementById('nominal').textContent = `${nominal.toLocaleString('en-US', { style: 'currency', currency: 'EUR' })}`;
-      document.getElementById('real').style.display = inflation ? 'block' : 'none';
-      document.getElementById('real-value').textContent = `${real.toLocaleString('en-US', { style: 'currency', currency: 'EUR' })}`;
-      document.getElementById('after-tax').style.display = tax ? 'block' : 'none';
-      document.getElementById('after-tax-value').textContent = `${afterTax.toLocaleString('en-US', { style: 'currency', currency: 'EUR' })}`;
-
-      // Draw chart
-      drawChart(nominal, years, isRecurring, amount, returnRate, frequency);
-    }
-
-    // Draw simple line chart
-    function drawChart(nominal, years, isRecurring, amount, rate, freq) {
-      const canvas = document.getElementById('chart');
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const maxValue = nominal * 1.2; // Add padding
-      const points = [];
-      for (let y = 0; y <= years; y += years / 10) {
-        let value = isRecurring ? fvSeries(amount, rate, y, freq) : fv(amount, rate, y);
-        points.push({ x: y, y: value });
-      }
-
-      ctx.beginPath();
-      ctx.strokeStyle = '#28a745';
-      ctx.lineWidth = 2;
-      points.forEach((point, i) => {
-        const x = (point.x / years) * canvas.width;
-        const y = canvas.height - (point.y / maxValue) * canvas.height;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
+      // Chart.js
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Wertentwicklung',
+            data: data,
+            fill: false,
+            tension: 0.1
+          }]
+        },
+        options: {
+          scales: { x: { title: { display: true, text: 'Jahre' } },
+                    y: { title: { display: true, text: 'Wert (€)' } } }
+        }
       });
-      ctx.stroke();
+    });
 
-      // Draw axes
-      ctx.beginPath();
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = 1;
-      ctx.moveTo(0, canvas.height); ctx.lineTo(0, 0); ctx.lineTo(canvas.width, 0);
-      ctx.stroke();
-    }
+    // Initial UI
+    toggleMode();
+    toggleTax();
+    toggleInflation();
+    yearsValue.textContent = yearsInput.value;
   </script>
 </body>
 </html>
